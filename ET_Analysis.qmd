@@ -1,0 +1,89 @@
+---
+title: "ET_Analysis"
+format: html
+editor: visual
+---
+
+# Loading Packages Import 
+```{r, message = FALSE}
+library(tidyverse)
+library(here)
+library(janitor)
+``` 
+
+# Data Import
+```{r, message = FALSE}
+et <- read_csv(here::here("data","monthly.csv")) %>%
+  clean_names() %>%
+  select(-contains("qc")) %>%
+  mutate(date = lubridate::my(month_year))
+
+```
+
+```{r}
+### Plot of monthly total reference transpiration
+ggplot(et, aes(x = date, y = total_e_to_mm)) +
+  geom_line(color = "#262626", size = 0.8) + 
+  geom_point(size = 1, alpha = 0.9, color = "#255C99") +
+    geom_smooth(method = "loess",  # Curve showing the trend in the data
+                se = FALSE, 
+                color = "#B3001B", 
+                size = 1, 
+                linetype = "dashed") +
+  scale_x_date(date_labels = "%Y", date_breaks = "2 years") +
+  labs(x = "Date (Year - Month)", 
+       y = "ETo Total (mm)", 
+       title = "Monthly Reference Evapotranspiration in Santa Barbara") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Monthy Average ETo
+```{r}
+# List to order the months
+month_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+# Plot of Data
+et %>% mutate(month = factor(sub("^(.{3}).*$", "\\1", et$month_year), levels = month_order)) %>%
+ggplot(aes(x = month, y = total_e_to_mm, color = month)) +
+  geom_boxplot(width = 0.5, fill = NA, outlier.shape = NA) +
+  theme_minimal(base_size = 12) +
+  scale_color_viridis_d(option = "E", name = "Month") + 
+  labs(
+       x = "Month", 
+       y = "ETo Total (mm)", 
+       title = "Boxplots of ETo by Month"
+  )
+```
+# Precipitation Data
+```{r}
+### Plot of monthly precipitation
+et %>% filter(date >= ymd("1993-06-01")) %>% # Filter to exclude extreme outliers
+ggplot(aes(x = date, y = total_precip_mm)) +
+  geom_line(color = "#262626", size = 0.8) + # Adds standard line
+  geom_point(size = 1, alpha = 0.9, color = "#255C99") +
+  scale_x_date(date_labels = "%Y", date_breaks = "2 years") +
+  labs(x = "Date (Year - Month)", 
+       y = "Total Monthly Transpiration (mm)", 
+       title = "Monthly Precipitation in Santa Barbara") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+daily <- read_csv(here::here("data","daily.csv")) %>%
+  clean_names() %>%
+  select(-contains("qc")) %>%
+  mutate(date = mdy(date))
+
+daily <- daily %>% filter(year(date) == c('2024', '2023', '2022', '2021'))
+
+daily %>% ggplot(aes(x = date, y = e_to_mm, color = year)) +
+  geom_point(color = "black", size = 0.5)
+```
+```{r}
+
+```
+
+
