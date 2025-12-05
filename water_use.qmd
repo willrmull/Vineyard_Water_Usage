@@ -42,14 +42,14 @@ The data is read in as a CSV file
 
 # Read in Statewide ETaw xlsx file
 water_raw <- read_excel(here::here("data", "water_use.xlsx"), 
-                   sheet = "Statewide_ETaw_Unit", skip = 1) %>%
+                   sheet = "Statewide_CF", skip = 1) %>%
           filter(!is.na(Year) & grepl("^20", Year)) %>% # Remove empty rows and duplicate labels
-          select("Year", "HR", "Vineyard", "Avg. ETaw") %>%  
+          select("Year", "HR", "Vineyard", "Avg. CF") %>%  
           clean_names()
 
 # Change Column Type and Remove North Lahontan
 water_clean <- water_raw %>%
-  mutate(avg_e_taw = as.numeric(avg_e_taw), 
+  mutate(avg_cf = as.numeric(avg_cf), 
          vineyard = as.numeric(vineyard),
          year = as.numeric(year)) %>%
   filter(vineyard > 0) # Remove the region without vineyards
@@ -85,11 +85,11 @@ print(plot_2)
 ```
 
 ```{r}
-plot_3 <- ggplot(water_clean, aes(x = vineyard, y = avg_e_taw, color = hr)) +
+plot_3 <- ggplot(water_clean, aes(x = vineyard, y = avg_cf, color = hr)) +
   geom_point(size = 3, alpha = 0.8) +
   geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
   labs(title = "Relation Ship Between Vinyard and Avg. ETaw by Hydrologic Region",
-       x = "vineyard", y = "avg_e_taw") +
+       x = "vineyard", y = "avg_cf") +
   scale_color_viridis_d(name = "Region") +
   theme_minimal(base_size = 13)
 
@@ -98,19 +98,3 @@ print(plot_3)
 ```
 
 ### Gamma Distribution
-
-```{l{r}
-gamma_fit <- fit(water_clean$vineyard, "gamma")
-gamma_fit
-```
-
-```{r}
-
-print(excel_sheets("data/water_use.xlsx"))
-
-```
-
-```{r}
-write.csv(water, file = "output.csv", row.names = FALSE)
-```
-
