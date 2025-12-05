@@ -1,0 +1,116 @@
+---
+title: "Untitled"
+format: html
+---
+
+# Title
+
+### Author: William Mullins
+
+### Date: December 5, 2025
+
+------------------------------------------------------------------------
+
+## Introduction
+
+Will add after converting to TypeScript for my website
+
+\[Insert DAG Here\]
+
+### Data Overview
+
+Will add after converting to TypeScript for my website
+
+### Import Packages
+
+```{r}
+library(tidyverse)
+library(here)
+library(janitor)
+library(readxl)
+library(MASS)
+```
+
+### Read in Data
+
+The data is read in as a CSV file
+
+```{r}
+# --------------------------- #
+#         Read in Data        #
+# --------------------------- #
+
+# Read in Statewide ETaw xlsx file
+water_raw <- read_excel(here::here("data", "water_use.xlsx"), 
+                   sheet = "Statewide_ETaw_Unit", skip = 1) %>%
+          filter(!is.na(Year) & grepl("^20", Year)) %>% # Remove empty rows and duplicate labels
+          select("Year", "HR", "Vineyard", "Avg. ETaw") %>%  
+          clean_names()
+
+# Change Column Type and Remove North Lahontan
+water_clean <- water_raw %>%
+  mutate(avg_e_taw = as.numeric(avg_e_taw), 
+         vineyard = as.numeric(vineyard),
+         year = as.numeric(year)) %>%
+  filter(vineyard > 0) # Remove the region without vineyards
+# View
+head(water)
+```
+
+### Histogram of ETaw
+
+```{r}
+plot_1 <- ggplot(water_clean, aes(x = vineyard)) +
+  geom_histogram(bins = 20, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Vineyard Applied Water Evapotranspiration",        x = "Vineyard ETaw",
+       y = "Density") +
+  theme_minimal()
+
+print(plot_1)
+```
+
+### Trends Across Hydrologic Regions
+
+```{r}
+plot_2 <- ggplot(water_clean, aes(x = year, y = vineyard, color = hr, group = hr)) +
+  geom_line(size = 2) +
+  geom_point(size = 1) +
+  labs(title = "Trends in ETaw by Hydrologic Regions",
+       x = "Year", y = "avg_e_taw") +
+  scale_color_viridis_d(name = "Region") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "right")
+
+print(plot_2)
+```
+
+```{r}
+plot_3 <- ggplot(water_clean, aes(x = vineyard, y = avg_e_taw, color = hr)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  labs(title = "Relation Ship Between Vinyard and Avg. ETaw by Hydrologic Region",
+       x = "vineyard", y = "avg_e_taw") +
+  scale_color_viridis_d(name = "Region") +
+  theme_minimal(base_size = 13)
+
+print(plot_3)
+
+```
+
+### Gamma Distribution
+
+```{l{r}
+gamma_fit <- fit(water_clean$vineyard, "gamma")
+gamma_fit
+```
+
+```{r}
+
+print(excel_sheets("data/water_use.xlsx"))
+
+```
+
+```{r}
+write.csv(water, file = "output.csv", row.names = FALSE)
+```
+
