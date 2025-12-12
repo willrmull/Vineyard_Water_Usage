@@ -1,51 +1,32 @@
 ---
-title: "water_use"
-format: html
+title: "Regional Water Use Efficiency in California Vineyards"
+author: "William Mullins"
+date: "December 5, 2025"
+format:
+  html
 ---
 
-# Title
+https://github.com/willrmull/Vineyard_Water_Usage
 
-### Author: William Mullins
 
-### Date: December 5, 2025
+# Introduction
 
-------------------------------------------------------------------------
+## The California Water Challenge
 
-# Regional Water Use Efficiency in California Vineyards
+**Does hydrologic region affect vineyard water use in California, after controlling for evapotranspiration, precipitation, and irrigated crop area?** 
 
-Author: William Mullins Github: https://github.com/willrmull/Vineyard_Water_Usage
+California agriculture accounts for approximately 80% of the state's developed water supply, making efficient water use critical for both economic sustainability and environmental stewardship. With climate change intensifying drought conditions and increasing competition for limited water resources, understanding regional differences in agricultural water use has become essential for policy development and resource allocation.
 
-(Put this on the left hand side)
+Vineyards represent a substantial portion of agricultural water consumption, spanning diverse climate zones from California's cool coastal appellations to its hot interior valleys. Annual applied water volumes range from hundreds to over 100,000 acre-feet per hydrologic region—variation that reflects differences in climate, management practices, and efficiency.
 
-California agricultural water use accounts for approximately 80% of the state's developed water supply, with vineyards representing a significant portion of this usage. Thus, as increasing climate pressures begin to materialize it is important that we understand the regional differences in water use for sustainable resource management. This analysis examines the difference in applied water use across the hydrologic regions in California where vineyards are grown, controlling for climate factors, irrigation efficiency, and vineyard size to identify regions with superior water management practices. 
+(Left Hand Site)
 
-(Put this on the right hand side)
+### California Hydrologic Regions
 
-![HR_ZONES](images/HR_ZONES.png)
+The state is divided into 10 hydrologic regions, each with distinct climate characteristics that influence agricultural water demand.
 
-## About the Data
-
-The data used was collects from the California Department of Water Resources Excel Application Tool 
-for **Statewide Agricultural Water Use Data from 2016 - 2020**. The data contains estimates for water use variables for twenty crop variables across the state. The variables used in this analysis are applied water (AW), irrigated crop area (ICA), crop evapotranspiration (${ET_c}$), and effective precipitation (Ep) which were analysed at the hydrologic region level. The data and supporting metadata can be accessed
-[here](https://data.ca.gov/dataset/statewide-agricultural-water-use-data-2016-2020).
-
-This Directed Acyclic Graph (DAG) illustrates the simplified relationships between the variables. 
-1. Hydrologic Region sits at the top as the primary driver of climate-influenced variables:
-- **Crop Evapotranspiration** (${ET_c}$):The total water lost to the atmosphere from soil and plant surfaces.
-- **Effective Precipitation Volume**: he portion of rainfall that effectively contributes to meeting crop water needs.
-
-2. Applied Water Volume (per acre): The "Applied Water Volume" for a single acre is determined in part by the difference between a crops water demand, ${ET_c}$, and the supply from effective precipitation—i.e., the deficit that must be supplied through irrigation.
-
-3.Irrigated Crop Area acts as a scaling factor: total applied water volume is obtained by multiplying the per-acre applied water by the number of irrigated acres.
-
-{ET_c}
-
-![DAG](images/DAG.png)
-
-### Import Packages
-
-The analysis requires the following packages
-```{r, message = FALSE}
+```{r, eval=TRUE, echo=FALSE}
+# Setup
 library(tidyverse)
 library(here)
 library(janitor)
@@ -57,9 +38,48 @@ library(broom)
 library(stringr)
 ```
 
-### Read in Data
+(Right Hand Site)
 
-```{r, messgae = FALSE, echo = FALSE}
+![California Hydrologic Regions](images/HR_ZONES.png)
+
+Data Sources & Structure
+
+Data was extracted from the California Department of Water Resources 
+**Statewide Agricultural Water Use Data (2016-2020)** Excel Application Tool. This dataset provides annual estimates 
+for water use variables across 20 crop types and multiple geographic scales.
+
+**Key variables used in this analysis:**
+
+- **Regional Applied Water Volume (AW)**: Total irrigation water applied to vineyards in acre-feet
+- **Regional Irrigated Crop Area (ICA)**: Total vineyard acreage receiving irrigation
+- **Regional Crop Evapotranspiration (ETc)**: Total water lost to atmosphere from soil and plants (acre-feet)—represents crop water demand
+- **Regional Effective Precipitation (Ep)**: Rainfall that effectively contributes to crop water needs (acre-feet)
+- **Hydrologic Region (HR)**: California's 10 major hydrologic regions, defined by watershed boundaries and climate characteristics
+
+Data availability: [California DWR Water Use Data](https://data.ca.gov/dataset/statewide-agricultural-water-use-data-2016-2020).
+
+### Directed Acyclic Graph (DAG)
+
+The following DAG illustrates the conceptual model of how the variables relate:
+
+1. **Hydrologic Region (HR) → Climate Driven Variables**: HR defines the local climate conditions
+   - Different regions have different temperatures, humidity, and weather patterns
+   - This drives both ETc (water lost) and Ep (water gained naturally)
+
+2. **Climate Driven Variables → Water Use**: After accounting for natural water supply (Ep), the deficit between demand (ETc) and supply must be met through irrigation
+
+3. **Vineyard Size (ICA) → Total Volume**: Larger vineyards require proportionally more total water (a scaling relationship)
+
+After controlling for climate and size, regional coefficients isolate potential management efficiency differences.
+The reference region (Central Coast) represents the efficiency baseline.
+
+![DAG](images/D.png)
+
+### Data Processing Pipeline
+
+The data is stored in an excel application, which means that data for each of the variables is stored on it's own individual sheets. The following code is used to read in data from each of the sheets and convert it into a standard data frame.
+
+```{r}
 # ============================================================================
 # Read in Data 
 # ============================================================================
@@ -149,7 +169,10 @@ final_data <- bind_rows(all_tables) %>%
 filter(Crop_Type != "Total", "Regional_AW_Vol" >= 0)
 ```
 
-### Data Preperation
+### Data Preparation
+
+Now that the data has been read in, we can select data collected from vineyards which applied water to their crops. That gives the folling data frame
+
 ```{r}
 # Select vineyard data
 vineyard_data <- final_data %>%
@@ -166,13 +189,12 @@ vineyard_data$HR <- gsub("10_", "", vineyard_data$HR)
 vineyard_data$HR <- factor(vineyard_data$HR)
 
 # View
-head(vineyard_data)
+head(vineyard_data, 10)
 ```
 
-### Explore Data 
+## Data Exploration
 
-Now that the data is clean we can gather summary statistics regarding the average annual water use across hydrologic regions which can be seen in the table below.
-
+### Regional Water Use Summary
 ```{r}
 # Get Summary AW Data For Each Region
 regional_summary <- vineyard_data %>%
@@ -184,120 +206,32 @@ regional_summary <- vineyard_data %>%
     sd_AW = sd(Regional_AW_Vol),
     se_AW = sd_AW / sqrt(n)) %>%
   arrange(mean_AW)
+
+regional_summary
 ```
 
-<table>
-  <thead>
-    <tr>
-      <th colspan="6">Applied Water (AW)</th>
-    </tr>
-    <tr>
-      <th>HR</th>
-      <th>n</th>
-      <th>mean_AW</th>
-      <th>median_AW</th>
-      <th>sd_AW</th>
-      <th>se_AW</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>South Lahontan</td>
-      <td>23</td>
-      <td>128.7751</td>
-      <td>39.4338</td>
-      <td>295.2821</td>
-      <td>61.57058</td>
-    </tr>
-    <tr>
-      <td>South Coast</td>
-      <td>46</td>
-      <td>1287.7218</td>
-      <td>296.4866</td>
-      <td>2120.1648</td>
-      <td>312.60125</td>
-    </tr>
-    <tr>
-      <td>Sacramento River</td>
-      <td>206</td>
-      <td>3631.8338</td>
-      <td>134.9146</td>
-      <td>8249.1706</td>
-      <td>574.74695</td>
-    </tr>
-    <tr>
-      <td>North Coast</td>
-      <td>121</td>
-      <td>5936.5745</td>
-      <td>443.8500</td>
-      <td>10137.3432</td>
-      <td>921.57665</td>
-    </tr>
-    <tr>
-      <td>Colorado River</td>
-      <td>25</td>
-      <td>6748.8049</td>
-      <td>386.1504</td>
-      <td>13446.1262</td>
-      <td>2689.22525</td>
-    </tr>
-    <tr>
-      <td>Central Coast</td>
-      <td>163</td>
-      <td>9917.9353</td>
-      <td>1476.9536</td>
-      <td>22978.5316</td>
-      <td>1799.81750</td>
-    </tr>
-    <tr>
-      <td>San Francisco Bay</td>
-      <td>80</td>
-      <td>10135.7991</td>
-      <td>138.5488</td>
-      <td>25803.3874</td>
-      <td>2884.90641</td>
-    </tr>
-    <tr>
-      <td>San Joaquin River</td>
-      <td>182</td>
-      <td>17764.8654</td>
-      <td>3262.9932</td>
-      <td>41878.1881</td>
-      <td>3104.21783</td>
-    </tr>
-    <tr>
-      <td>Tulare Lake</td>
-      <td>166</td>
-      <td>38072.2354</td>
-      <td>5663.5100</td>
-      <td>58246.3556</td>
-      <td>4520.79395</td>
-    </tr>
-  </tbody>
-</table>
+**Key observations:**
 
-#### **Takeaways:** 
+- **Large variation between regions**: Mean water use ranges from 129 acre-feet (South Lahontan) to 38,072 acre-feet (Tulare Lake)—a nearly 300-fold difference
+- **High within-region variability**: Standard deviations exceed means in all regions, indicating right-skewed distributions
+- **Median < Mean everywhere**: Consistent with right skew caused by a few very large vineyard operations
 
-- Mean AW Between Regions: significant variation in mean AW between regions, with it ranging from ~129 (South Lahontan) to ~38,072 (Tulare Lake).
-- Variability Within Regions: In all of the regions the standard deviations exceeded the means, which indicates that there may be skewed distributions cause by high use vineyards
-- Median < Mean: In all of the regions the median value was lower, often considerably so, than the mean indicating that there may be a right skew to the data. 
+### Distribution of Water Use
 
-This boxplot,  which displays applied water volume on a log scale, helps visualize the significant variation within regions. It shows that most regions have modest median use, but a few (notably Central Coast and San Joaquin River) show extreme spread: from <10 to >100,000 acre-feet — driven by high-use outliers.
+This log-scale boxplot reveals that while most regions have modest median use (100-1,000 acre-feet), there are many high water volume outliers in regions like Central Coast, San Joaquin River, and Tulare Lake—drives
 ```{r}
-# Box-plot of Regional_AW_Vol
-vineyard_data %>% 
-  ggplot(aes(x = reorder(HR, Regional_AW_Vol, FUN = median),  # Order Data By Median
+vineyard_data %>%
+  ggplot(aes(x = reorder(HR, Regional_AW_Vol, FUN = median),
              y = Regional_AW_Vol)) +
   geom_boxplot(aes(fill = HR), outlier.alpha = 0.3) +
   scale_fill_viridis_d() +
-  scale_y_log10(labels = scales::comma) + # Apply log scale
+  scale_y_log10(labels = scales::comma) +
   labs(
-    x = "Hydrologic Region", 
+    x = "Hydrologic Region",
     y = "Applied Water Volume (Acre-Feet, Log Scale)",
-    title = "Applied Water Volume in Vineyards Across California Regions",
-    subtitle = "Ordered By Median Water Use"
+    title = "Applied Water Volume Distribution Across California Regions",
+    subtitle = "Regions ordered by median water use"
   ) +
-  theme_minimal(base_size = 12) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
     legend.position = "none",
@@ -305,272 +239,321 @@ vineyard_data %>%
     plot.subtitle = element_text(hjust = 0.5)
   )
 ```
+# Statistical Model
 
-### Gamma Model
+## Model Specification
 
-For this analysis a gamma model will be used, which shows the. 
+### Why Gamma?
 
-Applied Water Volume ~ Gamma(μ, φ) 
+The Gamma distribution is appropriate here because:
 
-log(μ) = β0 + β1*ETc Volume + β2*Ep Volume + β3*log(ICA) + β4*HR
+1. **Positive support**: Water use cannot be zero or negative in irrigated areas
+2. **Right-skewed**: The distribution has a long right tail (high outliers)
+3. **Mean-variance relationship**: Variance increases with the mean (heteroscedasticity)
 
-The Gamma GLM with log link was used for the following reasons:
-  - Positive Values Only:  The water use can never be zero or negative in areas which are irrigated
-  - Right Skewed: As mentioned previously the data shows an extreme positive skews in water use
+### Model Statistical Notation
+
+$$
+Y_i \sim \text{Gamma}(\text{shape} = k, \text{scale} = \theta_i)
+$$
+
+where:
+- $Y_i$ = Regional Applied Water Volume for observation $i$
+- $k = 1/\phi$ is the shape parameter (constant across observations)
+- $\phi$ is the dispersion parameter
+- $\theta_i$ is the scale parameter (varies by observation)
+
+**Gamma Regression Equation:**
+$$
+log(μ) = β_0 + β_1ETc_i + β_2Ep_i + β_3log(ICA_i) + β_4HR_4 + β_5HR_6 + β_5HR_6 + ... + β_kHR_k
+$$
+
+Coefficient Interpretation:
+
+- $β_1, β_2E$: Multiplicative change in water use per unit increase in ETc or Ep
+- $β_3log(ICA_i)$: Change in water use per % change in vineyard area
+- $β_4 - β_11$: Regional multiplier relative to Central Coast (reference region)
+
+
+### Model Fitting
 
 ```{r}
-model_gamma <- glm(
-  Regional_AW_Vol ~ 
-    Regional_ETc_Vol + 
-    Regional_Ep_Vol + 
-    log(Regional_ICA) +
-    HR,
-  family = Gamma(link = "log"),
-  data = vineyard_data
-)
+set.seed(123)
 
-summary(model_gamma)
+gamma_model <- glm(Regional_AW_Vol ~
+                        Regional_ETc_Vol + 
+                        Regional_Ep_Vol + 
+                        log(Regional_ICA) + 
+                        HR, 
+                     family = Gamma(link = "log"),
+                     data = vineyard_data)
+
+
+summary(gamma_model)
 ```
 
-### Hypothesis Test: No Regional Differences
 
-**Null hypothesis**: No difference in water use between regions (all HR coefficients = 0)
-**Alternative hypothesis**: Water use varies in at least one of the regions.
+## Model Validation Through Simulation
 
-In order to test this null hypothesis a new gamma model must be fit without HR.
+To ensure the model is correctly specified and is able to reliably estimate parameters, simulations are used. This  process involves:
+
+1. Using coefficients from the model as the "true" values
+2. Generating 500 synthetic datasets using those parameters
+3. Refitting the model for each dataset
+4. Checking if that model recovers the true parameters
+
+### Simulation Procedure
 
 ```{r}
-# Null model (without HR)
-model_null <- glm(
-  Regional_AW_Vol ~ 
-    Regional_ETc_Vol + 
-    Regional_Ep_Vol + 
-    log(Regional_ICA),
-  family = Gamma(link = "log"),
-  data = vineyard_data
-)
+# Extract true parameters
+true_coefs <- coef(gamma_model)
+true_dispersion <- summary(gamma_model)$dispersion
 
-lrt <- anova(model_null, model_gamma, test = "LRT")
-print(lrt)
-
-print(paste("Chi-square statistic:", lrt$Deviance[2]))
-print(paste("Degrees of freedom:", lrt$Df[2]))
-print(paste("P-value:", lrt$`Pr(>Chi)`[2]))
-
+# Function to simulate data
+simulate_vineyard_data <- function(predictors, betas, dispersion, n_sim = 1) {
+  # Design matrix
+   X <- model.matrix(~ Regional_ETc_Vol + Regional_Ep_Vol + 
+                      log(Regional_ICA) + HR, data = predictors)
+   
+  #  Linear predictor (log scale)
+  eta <- X %*% betas
+   
+  # Mean (inverse link)
+  mean <- exp(eta)
+  
+  # Gamma shape parameter 
+  shape <- 1 / dispersion
+  
+  # Simulate response
+  y_sim <- rgamma(nrow(predictors), shape = shape, scale = mean / shape)
+  
+  return(y_sim)
+}
 ```
-### Interpretation of Model Results
 
-Chi-square statistic: 39.5658
-Degrees of freedom: 8
-P-value: < 0.001 (1.67 × 10⁻²⁴⁰)
-
-We reject the null hypothesis. There are statistically significant differences in applied water volume (Regional_AW_Vol) between hydrologic regions (HR), even after controlling for:
-- Crop water demand (Regional_ETc_Vol)
-- Natural water supply (Regional_Ep_Vol)
-- Vineyard size (log(Regional_ICA)).
-
-TYPE III ANOVA: INDIVIDUAL PREDICTOR SIGNIFICANCE
 ```{r}
-anova_results <- Anova(model_gamma, type = "III", test.statistic = "Wald")
-print(anova_results)
-```
-### Parameter Signifigance 
+# Run simulations
 
-Hydrologic Region 
-- Strongest regional effect (χ² = 1,630.2, p < 0.001).
-- Interpretation: Regional policies, infrastructure, soil types, or unmeasured climatic factors significantly drive water use differences beyond climate and vineyard size.
+# Number of simulations
+n_sims <- 500 
+results <- vector("list", n_sims)
 
-Vineyard Size (log(Regional_ICA))
-- Extremely significant (χ² = 208,500, p < 0.001).
-
-Climate Drivers
-- Crop ET (Regional_ETc_Vol): Significant (p = 0.0013). Higher water demand → more applied water.
-- Effective Precip (Regional_Ep_Vol): Significant (p = 0.0063). Natural rainfall offsets irrigation needs.
-
-Intercept
-- Baseline water use (when all predictors = 0) is non-zero (p < 0.001), reflecting fixed irrigation requirements.
-
-### Parameter Simulation
-```{r}
-# Get coefficient values and dispersion from gamma model
-true_params <- coef(model_gamma)
-true_dispersion <- summary(model_gamma)$dispersion
-
-# function that generates synthetic data
-simulate_vineyard_data <- function(n_obs = 200) {
-  
-  # Samples 1,000 observations with replacement from your original dataset
-  sim_data <- vineyard_data %>%
-    sample_n(n_obs, replace = TRUE) %>%
-    select(Regional_ETc_Vol, Regional_Ep_Vol, Regional_ICA, HR)
-  
-  # Calculate Expected Values
-  X <- model.matrix(~ Regional_ETc_Vol + Regional_Ep_Vol + 
-                     log(Regional_ICA) + HR, data = sim_data)
-  # Calculates the linear predictor
-  eta <- X %*% true_params
-  # inverse log link function to get expected water use values
-  mu <- exp(eta)
-  
-  # Simulate Response Variables
-  shape_param <- 1 / true_dispersion
-  sim_data$Regional_AW_Vol <- rgamma(
-    n_obs,
-    shape = shape_param,
-    scale = as.vector(mu) * true_dispersion
+# Run simulations
+for (i in 1:n_sims) {
+  # Simulate new response
+  vineyard_sim <- vineyard_data
+  vineyard_sim$Regional_AW_Vol <- simulate_vineyard_data(
+    vineyard_data, true_coefs, true_dispersion
   )
   
-  return(sim_data)
+  # Refit model
+  model_sim <- glm(
+    Regional_AW_Vol ~ Regional_ETc_Vol + Regional_Ep_Vol + 
+    log(Regional_ICA) + HR,
+    family = Gamma(link = "log"),
+    data = vineyard_sim
+  )
+  
+  # Store results
+  results[[i]] <- list(
+    coefs = coef(model_sim),
+    converged = model_sim$converged
+  )
 }
 
-# Run simulation
-set.seed(123)
-vineyard_sim <- simulate_vineyard_data(n_obs = 200)
+# Extract coefficient matrix
+coef_matrix <- do.call(rbind, lapply(results, function(x) x$coefs))
+```
 
-# Refit model to simulated data
-validation_model <- glm(
-  Regional_AW_Vol ~ Regional_ETc_Vol + Regional_Ep_Vol + 
-    log(Regional_ICA) + HR,
+### Simulation Results
+
+```{r}
+param_summary <- data.frame(
+  Parameter = names(true_coefs),
+  True_Value = true_coefs,
+  Mean_Estimate = colMeans(coef_matrix),
+  SD = apply(coef_matrix, 2, sd),
+  CI_Lower = apply(coef_matrix, 2, quantile, 0.025),
+  CI_Upper = apply(coef_matrix, 2, quantile, 0.975),
+  row.names = NULL
+)
+
+# Check if 95% CI contains true value
+param_summary <- param_summary %>% mutate(Contain_95 = if_else(
+  True_Value >= CI_Lower & True_Value <= CI_Upper, "Yes", "No"
+  ))
+
+
+print(param_summary)
+```
+
+**Interpretation**: For all of the parameters the model was able to recover the true value of the mean within it's 95% confidence interval. This suggest that the model is successfully able to recover the parameter values.
+
+### Visualization of Parameter Recovery
+
+
+# Statistical Inference
+
+## Hypothesis Testing
+
+### Overall Test: Do Regions Differ?
+
+**Null Hypothesis ($H_0$):**
+$$
+\beta_4 = \beta_5 = \cdots = \beta_{11} = 0
+$$
+
+All HR coefficients are zero, meaning there are NO differences in water use between hydrologic regions after controlling for climate factors and vineyard size.
+
+**Alternative Hypothesis ($H_1$):**
+$$
+\text{At least one } \beta_i ≠ 0
+$$
+
+At least one region differs in water use, indicating that regional factors beyond climate (e.g., efficiency, technology, regulations) affect water use.
+
+### Likelihood Ratio Test
+
+The $H_0$ is tested by comparing the full gamma model (with HR) to a reduced gamma model (without HR):
+
+```{r}
+model_null <- glm(
+  Regional_AW_Vol ~ Regional_ETc_Vol + Regional_Ep_Vol + log(Regional_ICA),
   family = Gamma(link = "log"),
-  data = vineyard_sim
-)
-```
-
-
-```{r}
-# Compare parameters from gamma model and validation model
-param_comparison <- data.frame(
-  Parameter = names(true_params),
-  True = true_params,
-  Recovered = coef(validation_model),
-  Difference = true_params - coef(validation_model),
-  Pct_Error = abs((true_params - coef(validation_model)) / true_params * 100)
+  data = vineyard_data
 )
 
-print(param_comparison)
+lrt <- anova(model_null, gamma_model, test = "LRT")
+print(lrt)
 
-print(paste("Mean absolute % error:", round(mean(param_comparison$Pct_Error, na.rm = TRUE), 2)))
-print(paste("Max absolute % error:", round(max(param_comparison$Pct_Error, na.rm = TRUE), 2)))
-
+round(lrt$Deviance[2], 2)
 ```
+**Results:**
 
-Parameter Recovery Summary:
-- Mean absolute % error: 80.03 %
-- Max absolute % error: 448.47 %
+- **Test Statistic**: $\chi^2$ = 39.57 (df = 8)
+- **P-value**: < 2.2e-16
+- **Conclusion**: We **reject the null hypothesis**. There is  evidence that the hydrologic regions affect the water applied by vineyards even after controlling for climate demand, precipitation, and vineyard size.
 
-### Visualization of Model Fit
-```{r}
-# Get predictions
-predicted <- predict(model_gamma, type = "response")
-r_squared <- cor(comparison$Actual, comparison$Predicted)^2
-
-
-# Predicted vs Actual
-predicted_plot <- ggplot(comparison, aes(x = Actual, y = Predicted)) +
-  geom_point(alpha = 0.5) +
-  geom_abline(slope = 1, intercept = 0, color = "blue", 
-              linetype = "dashed", linewidth = 1) +
-  scale_x_log10(labels = scales::comma) +
-  scale_y_log10(labels = scales::comma) +
-  scale_color_viridis_d() +
-  annotate("text", x = min(comparison$Actual), y = max(comparison$Predicted), 
-           label = paste0("R² = ", round(r_squared, 3)),
-           hjust = 0, vjust = 1, size = 5, fontface = "bold") +
-  labs(
-    title = "Model Performance: Predicted vs Actual",
-    x = "Actual AW (Acre-Feet)",
-    y = "Predicted AW (Acre-Feet)"
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "right"
-  )
-
-# Residuals by region
-residutal_plot <- ggplot(comparison, aes(x = HR, y = Residual)) +
-  geom_boxplot(aes(fill = HR), outlier.alpha = 0.3) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "blue") +
-  scale_fill_viridis_d() +
-  labs(
-    title = "Model Residuals by Region",
-    x = "Hydrologic Region",
-    y = "Residuals (Acre-Feet)"
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none",
-    plot.title = element_text(hjust = 0.5, face = "bold")
-  )
-
-print(predicted_plot / residutal_plot)
-```
-Discussion 
-
-### Regional Differences in Water Use Efficiency
-
-Add explaination
+### Individual Region Comparisons
 
 ```{r}
 # Extract regional coefficients
-regional_coefs <- tidy(model_gamma, conf.int = TRUE) %>%
-  filter(str_starts(term, "HR")) %>%
-  # Converts log-scale estimates to percentage differences in water use
+regional_effects <- tidy(gamma_model, conf.int = TRUE) %>%
+  filter(grepl("^HR", term)) %>%
   mutate(
-    region = str_remove(term, "^HR"),
-    pct_more_water = (exp(estimate) - 1) * 100,
-    ci_low_pct = (exp(conf.low) - 1) * 100,
-    ci_high_pct = (exp(conf.high) - 1) * 100
+    Region = gsub("^HR", "", term),
+    pct_change = (exp(estimate) - 1) * 100,
+    ci_low = (exp(conf.low) - 1) * 100,
+    ci_high = (exp(conf.high) - 1) * 100,
+    signif = p.value < 0.05
   ) %>%
-  # Sets values from reference region (Central Coast) to zero
-  bind_rows(
-    tibble(
-      term = "HR(Reference)",
-      estimate = 0,
-      std.error = 0,
-      statistic = 0, 
-      p.value = NA,
-      conf.low = 0,
-      conf.high = 0,
-      region = levels(vineyard_data$HR)[1],
-      pct_more_water = 0,
-      ci_low_pct = 0,
-      ci_high_pct = 0
-    )
-  ) %>%
-  arrange(desc(estimate))  # Fixed ranking direction
+  arrange(desc(pct_change))
 
-# Visualize
-plot_rank <- ggplot(regional_coefs,  aes(x = reorder(region, estimate), y = pct_more_water)) +
-  geom_col(aes(fill = pct_more_water), width = 0.7) +
-  geom_errorbar(aes(ymin = ci_low_pct, ymax = ci_high_pct), width = 0.2) +
-  geom_hline(yintercept = 0) +
-   scale_fill_viridis_c(
-    direction = 1,     
-    name = "% More\nWater",
-    limits = c(min(regional_coefs$ci_low_pct), max(regional_coefs$ci_high_pct))
-  ) +
-  coord_flip(clip = "off") +
-  labs(
-    title = "Regional Water Use Efficiency Rankings",
-    subtitle = "% More Water Used Compared to Central Coast",
-    x = "Hydrologic Region",
-    y = "% More Water Used (controlling for climate and size)",
-    caption = "Error bars show 95% confidence intervals"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
-    plot.subtitle = element_text(hjust = 0.5),
-    legend.position = "right",
-    plot.margin = margin(r = 20)  # Extra space for rank numbers
+# Add reference region
+reference_region <- levels(vineyard_data$HR)[1]
+regional_effects <- regional_effects %>%
+  add_row(
+    Region = reference_region,
+    pct_change = 0,
+    ci_low = 0,
+    ci_high = 0,
+    signif = NA,
+    .before = 1
   )
 
-print(plot_rank)
+# Display table
+regional_effects %>%
+  select(Region, pct_change, ci_low, ci_high, signif)
 ```
-Add Stats Later
+### Visualizing Regional Coefficients
 
-Discussion:
+```{r}
+ggplot(regional_effects, aes(x = reorder(Region, pct_change), 
+                            y = pct_change)) +
+  geom_col(aes(fill = pct_change), width = 0.7) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high), 
+                width = 0.2, linewidth = 0.8) +
+  geom_hline(yintercept = 0, linetype = "solid", linewidth = 0.5) +
+  scale_fill_viridis_c(
+    name = "% Difference in\nExpected Water Use"
+  ) +
+  coord_flip() +
+  labs(
+    title = "Regional Water Use Coefficients",
+    subtitle = "Percent difference in expected water use compared to Central Coast (reference region)",
+    x = "Hydrologic Region",
+    y = "% Difference in Expected Water Use\n(controlling for climate, precipitation, and vineyard size)",
+    caption = "Error bars show 95% confidence intervals"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, size = 11),
+    legend.position = "none"
+  )
+```
+### Interpretation of Regional Coefficients
+
+Of the nine regions, only one, the North Coast, did not differ a statistically significant amount from the coefficient of the central coast. Add more here
+
+## Model Fit and Diagnostics
+
+### Predicted vs Observed Values
+
+```{r}
+# Get predictions
+vineyard_data$predicted <- predict(gamma_model, type = "response")
+vineyard_data$residuals <- residuals(gamma_model, type = "pearson")
+
+# Calculate R-squared
+r_squared <- cor(vineyard_data$Regional_AW_Vol, vineyard_data$predicted)^2
+
+# Predicted vs actual plot
+ggplot(vineyard_data, aes(x = Regional_AW_Vol, y = predicted)) +
+  geom_point(aes(color = HR), alpha = 0.5) +
+  geom_abline(slope = 1, intercept = 0, 
+              color = "black", linetype = "dashed", linewidth = 1) +
+  scale_x_log10(labels = scales::comma) +
+  scale_y_log10(labels = scales::comma) +
+  scale_color_viridis_d() +
+  annotate("text", 
+           x = min(vineyard_data$Regional_AW_Vol) * 2, 
+           y = max(vineyard_data$predicted) * 0.8,
+           label = paste0("R² = ", round(r_squared, 3)),
+           hjust = 0, size = 5, fontface = "bold") +
+  labs(
+    title = "Model Performance: Predicted vs Observed Water Use",
+    x = "Observed Applied Water (Acre-Feet, Log Scale)",
+    y = "Predicted Applied Water (Acre-Feet, Log Scale)",
+    color = "Hydrologic\nRegion"
+  ) +
+  theme(legend.position = "right")
+```
+The model explains 98.6% of variance in water use, indicating excellent fit.
+
+# Discussion
+
+## Key Findings
+
+This analysis provides evidence that **hydrologic regions in California differ substantially in vineyard water use efficiency**
+even after accounting for climate-driven water demand, effective precipitation, and vineyard size.
+
+### Main Results:
+
+1. **Regional effects are statistically significant and large**
+   - LRT test: χ² = 39.6, p < 0.001
+   - Coefficients ranged from from -1% to +92% percent different from reference level
+   
+2. **Three regions show substantially higher coefficients**
+   - Colorado River: 92% higher expected water use
+   - Tulare Lake: 72% higher expected water use
+   - South Lahontan: 74% higher expected water use
+   
+3. **Model validation confirms reliability**
+   - Simulation showed parameter recovery
+   - High R² (0.986) the majority of variation can be explained by the model
 
 
+## Future Directions
+
+Further investigation should be done into finding what is causing the regional variation in water use between the regions. The results of this investigation imply that additional variables
+outside of water need are affecting some of these regions. Investigations should look into wether this is causeed by management decsions or by additional evironmental factors not considered in this study.
